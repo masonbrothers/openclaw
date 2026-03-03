@@ -65,6 +65,7 @@ export type ChatProps = {
   // File attachments
   attachments?: ChatAttachment[];
   onAttachmentsChange?: (attachments: ChatAttachment[]) => void;
+  onAttachmentsAppend?: (attachments: ChatAttachment[]) => void;
   // Scroll control
   showNewMessages?: boolean;
   onScrollToBottom?: () => void;
@@ -185,17 +186,16 @@ function readFileAsAttachment(file: File): Promise<ChatAttachment> {
 }
 
 async function appendFiles(props: ChatProps, files: File[]) {
-  if (!props.onAttachmentsChange || files.length === 0) {
+  if (!props.onAttachmentsAppend || files.length === 0) {
     return;
   }
   const next = await Promise.all(files.map((file) => readFileAsAttachment(file)));
-  const current = props.attachments ?? [];
-  props.onAttachmentsChange?.([...current, ...next]);
+  props.onAttachmentsAppend(next);
 }
 
 function handlePaste(e: ClipboardEvent, props: ChatProps) {
   const items = e.clipboardData?.items;
-  if (!items || !props.onAttachmentsChange) {
+  if (!items || !props.onAttachmentsAppend) {
     return;
   }
 

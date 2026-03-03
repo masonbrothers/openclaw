@@ -237,7 +237,7 @@ describe("chat view", () => {
 
   it("supports multiple file uploads via picker change", async () => {
     const container = document.createElement("div");
-    const onAttachmentsChange = vi.fn();
+    const onAttachmentsAppend = vi.fn();
 
     class MockFileReader {
       public result: string | ArrayBuffer | null = null;
@@ -264,7 +264,7 @@ describe("chat view", () => {
     render(
       renderChat(
         createProps({
-          onAttachmentsChange,
+          onAttachmentsAppend,
         }),
       ),
       container,
@@ -281,8 +281,8 @@ describe("chat view", () => {
     input.dispatchEvent(new Event("change", { bubbles: true }));
     await Promise.resolve();
 
-    expect(onAttachmentsChange).toHaveBeenCalledTimes(1);
-    const attachments = onAttachmentsChange.mock.calls[0]?.[0] as Array<{ fileName?: string }>;
+    expect(onAttachmentsAppend).toHaveBeenCalledTimes(1);
+    const attachments = onAttachmentsAppend.mock.calls[0]?.[0] as Array<{ fileName?: string }>;
     expect(attachments).toHaveLength(2);
     expect(attachments.map((a) => a.fileName)).toEqual(["brief.txt", "proof.pdf"]);
 
