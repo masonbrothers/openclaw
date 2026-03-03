@@ -1059,6 +1059,9 @@ export function renderApp(state: AppViewState) {
                 onAttachmentsAppend: (next) => {
                   state.chatAttachments = [...state.chatAttachments, ...next];
                 },
+                onAttachmentError: (message) => {
+                  state.lastError = message;
+                },
                 onSend: () => state.handleSendChat(),
                 canAbort: Boolean(state.chatRunId),
                 onAbort: () => void state.handleAbortChat(),

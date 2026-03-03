@@ -66,6 +66,7 @@ export type ChatProps = {
   attachments?: ChatAttachment[];
   onAttachmentsChange?: (attachments: ChatAttachment[]) => void;
   onAttachmentsAppend?: (attachments: ChatAttachment[]) => void;
+  onAttachmentError?: (message: string) => void;
   // Scroll control
   showNewMessages?: boolean;
   onScrollToBottom?: () => void;
@@ -167,16 +168,25 @@ function isImageAttachment(att: ChatAttachment): boolean {
   return att.mimeType.toLowerCase().startsWith("image/");
 }
 
+const MAX_ATTACHMENT_SIZE_BYTES = 50 * 1024 * 1024;
+
 function readFileAsAttachment(file: File): Promise<ChatAttachment> {
   return new Promise((resolve, reject) => {
+    if (file.size > MAX_ATTACHMENT_SIZE_BYTES) {
+      reject(new Error(`File \"${file.name || "unnamed"}\" exceeds 50 MB.`));
+      return;
+    }
+
     const reader = new FileReader();
     reader.addEventListener("error", () => reject(reader.error ?? new Error("Failed to read file")));
     reader.addEventListener("load", () => {
       const dataUrl = typeof reader.result === "string" ? reader.result : "";
+      const dataUrlMime = /^data:([^;]+);base64,/i.exec(dataUrl)?.[1] ?? "";
+      const mimeType = file.type || dataUrlMime || "application/octet-stream";
       resolve({
         id: generateAttachmentId(),
         dataUrl,
-        mimeType: file.type || "application/octet-stream",
+        mimeType,
         fileName: file.name,
         sizeBytes: file.size,
       });
@@ -189,8 +199,20 @@ async function appendFiles(props: ChatProps, files: File[]) {
   if (!props.onAttachmentsAppend || files.length === 0) {
     return;
   }
-  const next = await Promise.all(files.map((file) => readFileAsAttachment(file)));
-  props.onAttachmentsAppend(next);
+  const settled = await Promise.allSettled(files.map((file) => readFileAsAttachment(file)));
+  const next = settled
+    .filter((result): result is PromiseFulfilledResult<ChatAttachment> => result.status === "fulfilled")
+    .map((result) => result.value);
+  const errors = settled
+    .filter((result): result is PromiseRejectedResult => result.status === "rejected")
+    .map((result) => String(result.reason));
+
+  if (next.length > 0) {
+    props.onAttachmentsAppend(next);
+  }
+  if (errors.length > 0) {
+    props.onAttachmentError?.(errors[0] ?? "Some files could not be attached.");
+  }
 }
 
 function handlePaste(e: ClipboardEvent, props: ChatProps) {

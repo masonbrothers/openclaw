@@ -217,12 +217,16 @@ export async function sendChatMessage(
     ? attachments
         .map((att) => {
           const parsed = dataUrlToBase64(att.dataUrl);
-          if (!parsed || !isImageMimeType(parsed.mimeType)) {
+          if (!parsed) {
+            return null;
+          }
+          const looksLikeImage = isImageMimeType(parsed.mimeType) || isImageMimeType(att.mimeType);
+          if (!looksLikeImage) {
             return null;
           }
           return {
             type: "image",
-            mimeType: parsed.mimeType,
+            mimeType: isImageMimeType(parsed.mimeType) ? parsed.mimeType : att.mimeType,
             fileName: att.fileName,
             content: parsed.content,
           };
