@@ -82,6 +82,10 @@ function dataUrlToBase64(dataUrl: string): { content: string; mimeType: string }
   return { mimeType: match[1], content: match[2] };
 }
 
+function isImageMimeType(mimeType: string): boolean {
+  return mimeType.toLowerCase().startsWith("image/");
+}
+
 type AssistantMessageNormalizationOptions = {
   roleRequirement: "required" | "optional";
   roleCaseSensitive?: boolean;
@@ -152,12 +156,20 @@ export async function sendChatMessage(
   if (msg) {
     contentBlocks.push({ type: "text", text: msg });
   }
-  // Add image previews to the message for display
+  // Add attachment previews to the message for display
   if (hasAttachments) {
     for (const att of attachments) {
+      if (isImageMimeType(att.mimeType)) {
+        contentBlocks.push({
+          type: "image",
+          source: { type: "base64", media_type: att.mimeType, data: att.dataUrl },
+        });
+        continue;
+      }
+      const label = att.fileName?.trim() || "file";
       contentBlocks.push({
-        type: "image",
-        source: { type: "base64", media_type: att.mimeType, data: att.dataUrl },
+        type: "text",
+        text: `Attached file: ${label} (${att.mimeType})`,
       });
     }
   }
@@ -187,8 +199,9 @@ export async function sendChatMessage(
             return null;
           }
           return {
-            type: "image",
+            type: isImageMimeType(parsed.mimeType) ? "image" : "file",
             mimeType: parsed.mimeType,
+            fileName: att.fileName,
             content: parsed.content,
           };
         })
